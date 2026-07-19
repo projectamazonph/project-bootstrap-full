@@ -1,0 +1,99 @@
+name: Validate Documentation
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  validate-docs:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+    
+    - name: Validate Markdown files
+      run: |
+        echo "Validating documentation files..."
+        
+        # Check if key files exist
+        files=("README.md" "SKILL.md" "LICENSE" ".gitignore")
+        for file in "${files[@]}"; do
+          if [ ! -f "$file" ]; then
+            echo "ERROR: Missing required file: $file"
+            exit 1
+          fi
+        done
+        
+        # Check if documentation templates exist
+        templates=("BOOTSTRAP.md.tpl" "SESSION-LOG.md.tpl" "SPRINTS.md.tpl" "README.md.tpl" "MVP.md.tpl")
+        for template in "${templates[@]}"; do
+          if [ ! -f "references/$template" ]; then
+            echo "ERROR: Missing template file: references/$template"
+            exit 1
+          fi
+        done
+        
+        # Validate README.md length
+        readme_lines=$(wc -l < README.md)
+        if [ $readme_lines -lt 500 ]; then
+          echo "WARNING: README.md is only $readme_lines lines. Consider making it more detailed."
+        fi
+        
+        # Check SKILL.md for required sections
+        if ! grep -q "Phase 0: Project Type Detection" SKILL.md; then
+          echo "ERROR: SKILL.md missing Phase 0: Project Type Detection"
+          exit 1
+        fi
+        
+        if ! grep -q "Brownfield" SKILL.md; then
+          echo "ERROR: SKILL.md missing brownfield support"
+          exit 1
+        fi
+        
+        echo "✅ All documentation validation checks passed!"
+    
+    - name: Generate documentation stats
+      run: |
+        echo "📊 Documentation Statistics:"
+        echo "==========================="
+        echo "Total files: $(find . -name "*.md" -o -name "*.tpl" | wc -l)"
+        echo "Total lines: $(find . -name "*.md" -o -name "*.tpl" -exec cat {} + | wc -l)"
+        echo "Templates: $(find references -name "*.tpl" | wc -l)"
+        echo "Documentation sections in SKILL.md: $(grep -c "^###" SKILL.md)"
+        echo ""
+        echo "📁 File sizes:"
+        ls -lh README.md SKILL.md
+        echo ""
+        echo "📝 Template files:"
+        ls -lh references/
+    
+    - name: Create documentation summary
+      run: |
+        echo "# 📋 Documentation Summary" > docs-summary.md
+        echo "" >> docs-summary.md
+        echo "## 🎯 Overview" >> docs-summary.md
+        echo "- **Total Files**: $(find . -name "*.md" -o -name "*.tpl" | wc -l)" >> docs-summary.md
+        echo "- **Total Lines**: $(find . -name "*.md" -o -name "*.tpl" -exec cat {} + | wc -l)" >> docs-summary.md
+        echo "- **Templates**: $(find references -name "*.tpl" | wc -l)" >> docs-summary.md
+        echo "" >> docs-summary.md
+        echo "## 📄 Key Files" >> docs-summary.md
+        echo "- README.md: $(wc -l < README.md) lines" >> docs-summary.md
+        echo "- SKILL.md: $(wc -l < SKILL.md) lines" >> docs-summary.md
+        echo "- LICENSE: $(wc -l < LICENSE) lines" >> docs-summary.md
+        echo "" >> docs-summary.md
+        echo "## 📚 Documentation Templates" >> docs-summary.md
+        for template in references/*.tpl; do
+          if [ -f "$template" ]; then
+            echo "- $(basename $template): $(wc -l < $template) lines" >> docs-summary.md
+          fi
+        done
+        echo "" >> docs-summary.md
+        echo "Generated on: $(date)" >> docs-summary.md
+    
+    - name: Upload documentation summary
+      uses: actions/upload-artifact@v3
+      with:
+        name: documentation-summary
+        path: docs-summary.md
