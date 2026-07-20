@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     
     - name: Validate Markdown files
       run: |
@@ -143,7 +143,7 @@ jobs:
         echo "Generated on: $(date)" >> docs-summary.md
     
     - name: Upload documentation summary
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: documentation-summary
         path: docs-summary.md
