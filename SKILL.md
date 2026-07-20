@@ -144,6 +144,26 @@ Before scaffolding, perform a comprehensive codebase assessment:
 
 ---
 
+### Phase 2.7: Docstring Standard Lock-in
+
+**Every project this skill scaffolds must ship with a docstring/JSDoc standard on day one.** This is non-negotiable — it is the single highest-leverage documentation investment and the primary contract that lets AI coding agents work safely in the codebase.
+
+During this phase, before writing any code:
+
+1. **Drop `references/DOCSTRING_STANDARD.md.tpl` → `DOCSTRING_STANDARD.md`** at the project root. Fill in language(s) and team choices. Do not skip the file.
+2. **Detect the language stack** from the user's answers in Phase 1:
+   - **Python** → enable Google style, `pydocstyle` + `ruff D` + `interrogate --fail-under=80`, pre-commit hook, CI job.
+   - **TypeScript** → enable TSDoc, `eslint-plugin-jsdoc`, pre-commit hook, CI job.
+   - **Both** → enable both toolchains; the standard supports this.
+   - **Neither** → ask the user to pick a primary; the standard is the project's choice, not the scaffolder's.
+3. **Update `AGENTS.md` and `COMBINED_INSTRUCTIONS.md`** so the "Code Style" and "CI Requirements" sections reference `DOCSTRING_STANDARD.md` and require complete docstrings on every public symbol.
+4. **Update `OPERATING_GUIDELINES.md`** so the "Quality Gate" runs the docstring linter and the "Adding a Feature" recipe includes a docstring step.
+5. **Update `docs/CICD.md`** so the pipeline has a "Documentation Quality Stage" that blocks merges when `interrogate --fail-under=80` (Python) or `eslint jsdoc/*` (TypeScript) fails.
+6. **Brownfield projects:** if the existing codebase is below the docstring coverage threshold, the standard is still adopted, but a documented debt-reduction plan is added to `docs/SPRINTS.md` (e.g. "raise coverage from 45% to 80% over the next 3 sprints, file-by-file, no opportunistic blanket `noqa`").
+7. **AI-agent policy:** the standard must state explicitly that any AI coding agent (Mavis, Claude Code, Copilot, Cursor) writes the docstring at the same time it writes the function body, and that docstring deletion or shortening without an explicit reviewer instruction is a PR-blocking offense.
+
+The standard is **created from the template, not paraphrased**. This keeps the surface consistent across all projects bootstrapped from this skill.
+
 ### Phase 3: Scaffold & Documentation
 
 Create comprehensive project structure based on project type:
@@ -170,6 +190,7 @@ Create ALL new files from scratch:
 - `SESSION-LOG.md` - **Session log** with detailed work history, decisions made, and progress tracking
 - `SPRINTS.md` - **Sprint planning** with backlog, velocity tracking, and milestone planning
 - `COMBINED_INSTRUCTIONS.md` - **Essential instructions** combined from AGENTS.md and CLAUDE.md
+- `DOCSTRING_STANDARD.md` - **Docstring/JSDoc standard** (from `references/DOCSTRING_STANDARD.md.tpl`). Mandatory for every project this skill scaffolds. Defines style, linting toolchain, coverage threshold, and the AI-agent policy that docstrings ship with the function body in the same commit.
 
 #### Project Structure
 Create complete directory structure from scratch (see Phase 4)
@@ -204,6 +225,7 @@ Create complete directory structure from scratch (see Phase 4)
 | `SESSION-LOG.md` | Create as new session record |
 | `SPRINTS.md` | Create based on current development state |
 | `COMBINED_INSTRUCTIONS.md` | Create from existing AGENTS.md + CLAUDE.md |
+| `DOCSTRING_STANDARD.md` | Adopt from `references/DOCSTRING_STANDARD.md.tpl`; if existing coverage is below the threshold, add a debt-reduction plan to `docs/SPRINTS.md` (raise coverage over multiple sprints, no blanket `noqa`). |
 
 #### Documentation Integration Rules
 1. **Don't break existing workflows**: Preserve what works
@@ -402,6 +424,9 @@ Run validation checks:
 - Build system verification
 - SOLID architecture compliance
 - TDD protocol setup
+- **Docstring standard present** — `DOCSTRING_STANDARD.md` exists at the project root and is referenced from `AGENTS.md`, `COMBINED_INSTRUCTIONS.md`, `OPERATING_GUIDELINES.md`, and `docs/CICD.md`. Missing = validation fail.
+- **Docstring lint wired into CI** — `docs/CICD.md` has a Documentation Quality Stage that runs the docstring linter (`pydocstyle` / `interrogate` / `eslint jsdoc/*`) and gates merges. Missing = validation fail.
+- **Docstring coverage threshold** — for Python projects, `interrogate --fail-under=80` is configured in CI; for TypeScript projects, `eslint jsdoc/require-jsdoc` is set to `error`. Either must be present and active.
 
 Provide handoff with:
 - Next steps for implementation
@@ -430,5 +455,6 @@ This skill delivers:
 6. Validation report
 7. Implementation roadmap
 8. Session handover documentation
+9. **Docstring/JSDoc standard** — `DOCSTRING_STANDARD.md` at the project root, wired into `AGENTS.md`, `COMBINED_INSTRUCTIONS.md`, `OPERATING_GUIDELINES.md`, and the CI pipeline. AI coding agents are explicitly bound to write the docstring in the same change as the function body. Coverage threshold: 80% (Python) or 100% of public surface (TypeScript). A project scaffolded from this skill without this file is considered incomplete.
 
-Never create documentation without understanding the project first. Never skip intelligent questions. Never assume requirements.
+Never create documentation without understanding the project first. Never skip intelligent questions. Never assume requirements. **Never scaffold a project without `DOCSTRING_STANDARD.md` and the matching CI gate.**

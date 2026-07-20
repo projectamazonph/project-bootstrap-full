@@ -12,7 +12,8 @@
 graph LR
     A[Source Code] --> B[Build Stage]
     B --> C[Test Stage]
-    C --> D[Security Scan]
+    C --> C5[Doc Quality Stage]
+    C5 --> D[Security Scan]
     D --> E[Deploy Stage]
     E --> F[Monitor Stage]
 ```
@@ -36,6 +37,65 @@ graph LR
 - **E2E Tests:** [End-to-end test configuration]
 - **Performance Tests:** [Load/stress testing]
 - **Code Quality:** [Linting, formatting, static analysis]
+
+#### 3.5. Documentation Quality Stage
+
+A PR **MUST NOT** merge if docstring coverage or style falls below the project standard. The full rules live in [DOCSTRING_STANDARD.md](../../DOCSTRING_STANDARD.md); this section is just the CI wiring.
+
+- **Trigger:** Runs after the test stage, before security scan, on every PR and push to `main` / `develop`.
+- **Gate (Python):** `pydocstyle` clean, `ruff` rule `D` clean, `interrogate --fail-under=80` passes.
+- **Gate (TypeScript):** `eslint` with `eslint-plugin-jsdoc` reports no errors.
+- **Reports:** Upload the `interrogate` report and any `eslint --format junit` output as build artifacts.
+- **Bypass policy:** Suppressions are allowed only with a justification comment and team review. The CI job must log every suppression hit so they are visible in the PR.
+
+Reference job snippet (drop into `.github/workflows/ci.yml`):
+
+```yaml
+doc-quality:
+  name: Docstring / JSDoc quality
+  runs-on: ubuntu-latest
+  needs: build-test
+  steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      if: hashFiles('pyproject.toml') != ''
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Set up Node
+      if: hashFiles('package.json') != ''
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+
+    - name: Python — pydocstyle + interrogate + ruff D
+      if: hashFiles('pyproject.toml') != ''
+      run: |
+        pip install pydocstyle interrogate ruff
+        pydocstyle .
+        interrogate -vv --fail-under=80 .
+        ruff check --select D .
+
+    - name: TypeScript — eslint jsdoc
+      if: hashFiles('package.json') != ''
+      run: |
+        npm ci
+        npx eslint 'src/**/*.{ts,tsx}' \
+          --rule '{"jsdoc/require-jsdoc": "error", "jsdoc/require-param": "error", "jsdoc/require-returns": "error", "jsdoc/require-throws": "error"}'
+
+    - name: Upload doc-coverage report
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: doc-coverage-report
+        path: |
+          interrogate-report.txt
+          eslint-jsdoc-report.xml
+```
+
+The threshold (`fail-under=80`) and the `select = ["D"]` ruff rule must be kept in sync with `DOCSTRING_STANDARD.md` — bump both together when the standard changes.
 
 #### 4. Security Stage
 - **Dependency Scanning:** [Snyk, Dependabot, npm audit]
@@ -230,6 +290,14 @@ alerts:
   - name: Low Test Coverage
     condition: test_coverage < 80%
     severity: warning
+
+  - name: Low Docstring Coverage
+    condition: docstring_coverage < 80%
+    severity: warning
+    action: block_merge
+    notes: >
+      See DOCSTRING_STANDARD.md. PRs cannot merge until coverage is at
+      or above the configured threshold (default 80%).
 ```
 
 ### Metrics Collection

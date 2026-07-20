@@ -33,6 +33,7 @@ PostgreSQL (dev + production). Schema uses no SQLite-specific features. Every mu
 - No `console.log` in committed code. Use the structured logger.
 - No comments that restate the code. Comment the why, not the what.
 - File names: `kebab-case.ts` for non-component files, `PascalCase.tsx` for components.
+- **Docstrings (TSDoc/JSDoc) are required** on every exported function, class, method, type, and module-level constant. See [DOCSTRING_STANDARD.md](./DOCSTRING_STANDARD.md). A PR that ships a new exported symbol without a complete docstring (summary + `@param` + `@returns` + `@throws` + `@example` for non-trivial cases) is blocked in review and by CI.
 
 ### Testing (AGENTS.md)
 - Vitest for unit + integration.
@@ -57,13 +58,16 @@ PostgreSQL (dev + production). Schema uses no SQLite-specific features. Every mu
 
 ### CI Requirements (AGENTS.md)
 - `pnpm tsc --noEmit` — zero type errors
-- `pnpm lint` — zero ESLint errors (includes no-ai-slop)
+- `pnpm lint` — zero ESLint errors (includes no-ai-slop **and `jsdoc/*` rules**)
 - `pnpm test` — all tests pass
 - `pnpm test:coverage` — coverage above threshold
 - `pnpm test:e2e` — Playwright suite passes
 - `pnpm build` — production build succeeds
+- **Docstring lint** — `npx eslint 'src/**/*.{ts,tsx}'` with `jsdoc/require-jsdoc`, `jsdoc/require-param`, `jsdoc/require-returns`, `jsdoc/require-throws` all set to `error`. Full rules in [DOCSTRING_STANDARD.md](./DOCSTRING_STANDARD.md).
 - Lighthouse CI — performance budget met
 - `gitleaks detect` — no secrets in diff
+
+A PR that fails any of the above — including the docstring gate — cannot merge. The docstring gate is non-negotiable; suppressions require a justification comment and team review.
 
 ## File Dependency Chain (AGENTS.md)
 ```
@@ -88,6 +92,9 @@ Lower layers must not import from higher layers. `src/lib/auth.ts` cannot import
 - Don't write generic AI-slop copy.
 - Don't ship code without tests for new features (admin and business layer are mandatory).
 - Don't ignore the AuditLog. Every admin mutation logs.
+- **Don't ship a public function, class, method, or type without a complete docstring** (TSDoc summary + `@param` + `@returns` + `@throws` + `@example` where applicable). The docstring is part of the function, not a follow-up. See [DOCSTRING_STANDARD.md](./DOCSTRING_STANDARD.md).
+- **Don't let an AI agent write a function without a docstring.** When delegating to Mavis / Claude Code / Copilot / Cursor, the prompt must include "write the docstring in the same change."
+- **Don't silently bypass the docstring lint.** Suppressions need a justification comment and team review.
 
 ## Error Handling (AGENTS.md)
 When something breaks:

@@ -73,12 +73,25 @@ If those fail → fix the code, not the tests.
 pnpm typecheck && pnpm test
 ```
 
+Required (also run in CI, fails the build if it breaks):
+```bash
+# TypeScript — JSDoc / TSDoc lint
+npx eslint 'src/**/*.{ts,tsx}' --rule '{"jsdoc/require-jsdoc": "error"}'
+
+# Python — if pyproject.toml is present
+pydocstyle .
+interrogate -vv --fail-under=80 .
+ruff check --select D .
+```
+
 Optional (run separately):
 ```bash
 pnpm lint
 ```
 
-**CI on GitHub runs the same commands.** If CI fails on a PR, the PR cannot be merged.
+**CI on GitHub runs the same commands.** If CI fails on a PR — tests, typecheck, *or* docstring lint — the PR cannot be merged. The full docstring rules are in [DOCSTRING_STANDARD.md](../../DOCSTRING_STANDARD.md); the TL;DR: every public function, class, method, type, and module-level constant has a complete docstring, and coverage must be ≥ 80%.
+
+When an AI agent (Mavis, Claude Code, Copilot, Cursor) writes a function, it writes the docstring in the same commit. The docstring is the **contract**; the code is the **implementation**. They ship together.
 
 ---
 
@@ -113,16 +126,19 @@ Never `throw` from domain, ports, or usecases. Always return `Result.ok(value)` 
 ```
 1. Read the story .md in docs/stories/
 2. Write the failing tests  (src/usecases/__tests__/)
-3. Write the port interface (src/ports/)
-4. Write the domain entity  (src/domain/entities/)
-5. Write the use case      (src/usecases/)
-6. Write the adapter      (src/infra/)
+3. Write the port interface (src/ports/)     — with full TSDoc
+4. Write the domain entity  (src/domain/entities/)  — with full TSDoc
+5. Write the use case      (src/usecases/)    — with full TSDoc
+6. Write the adapter      (src/infra/)        — with full TSDoc
 7. Wire in container       (src/composition/container.ts)
-8. Write the app layer    (src/app/)
+8. Write the app layer    (src/app/)          — with full TSDoc
 9. pnpm typecheck && pnpm test
-10. Stage specific files only
-11. Commit, push, open PR
+10. npx eslint 'src/**/*.{ts,tsx}'          — JSDoc must be clean
+11. Stage specific files only
+12. Commit, push, open PR
 ```
+
+Step 3 onward: **the docstring is part of the function, not a follow-up.** A PR that ships a new exported function without a complete docstring is incomplete and will be blocked in review and by CI.
 
 ---
 

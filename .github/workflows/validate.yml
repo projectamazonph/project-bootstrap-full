@@ -27,13 +27,27 @@ jobs:
         done
         
         # Check if documentation templates exist
-        templates=("BOOTSTRAP.md.tpl" "SESSION-LOG.md.tpl" "SPRINTS.md.tpl" "README.md.tpl" "MVP.md.tpl")
+        templates=("BOOTSTRAP.md.tpl" "SESSION-LOG.md.tpl" "SPRINTS.md.tpl" "README.md.tpl" "MVP.md.tpl" "DOCSTRING_STANDARD.md.tpl")
         for template in "${templates[@]}"; do
           if [ ! -f "references/$template" ]; then
             echo "ERROR: Missing template file: references/$template"
             exit 1
           fi
         done
+
+        # Sanity-check the docstring standard mentions both required style conventions
+        if ! grep -qi "google" references/DOCSTRING_STANDARD.md.tpl; then
+          echo "ERROR: DOCSTRING_STANDARD.md.tpl must mention Google-style docstrings (Python)"
+          exit 1
+        fi
+        if ! grep -qi "tsdoc\|jsdoc" references/DOCSTRING_STANDARD.md.tpl; then
+          echo "ERROR: DOCSTRING_STANDARD.md.tpl must mention TSDoc/JSDoc (TypeScript)"
+          exit 1
+        fi
+        if ! grep -qi "fail-under\|coverage" references/DOCSTRING_STANDARD.md.tpl; then
+          echo "ERROR: DOCSTRING_STANDARD.md.tpl must define a coverage threshold (e.g. interrogate --fail-under=80)"
+          exit 1
+        fi
         
         # Validate README.md length
         readme_lines=$(wc -l < README.md)
