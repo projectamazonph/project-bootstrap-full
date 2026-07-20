@@ -82,6 +82,15 @@ npx eslint 'src/**/*.{ts,tsx}' --rule '{"jsdoc/require-jsdoc": "error"}'
 pydocstyle .
 interrogate -vv --fail-under=80 .
 ruff check --select D .
+
+# Design system — if DESIGN_SYSTEM.md is present
+npx stylelint "src/**/*.{css,scss,tsx,ts}" --max-warnings=0
+! grep -rE "linear-gradient\(|backdrop-filter:|filter: blur\(" src/ --include="*.css" --include="*.tsx"
+! grep -rEn "#[0-9a-fA-F]{3,8}" src/ --include="*.css" --include="*.tsx" --include="*.ts" | grep -v "tokens/"
+
+# Voice / writing — if VOICE_GUIDE.md is present
+vale --config .vale.ini docs/ README.md
+npx eslint 'src/**/*.{ts,tsx}' --rule '{"no-ai-slop/no-ai-slop": "error"}' --max-warnings=0
 ```
 
 Optional (run separately):
@@ -89,9 +98,13 @@ Optional (run separately):
 pnpm lint
 ```
 
-**CI on GitHub runs the same commands.** If CI fails on a PR — tests, typecheck, *or* docstring lint — the PR cannot be merged. The full docstring rules are in [DOCSTRING_STANDARD.md](../../DOCSTRING_STANDARD.md); the TL;DR: every public function, class, method, type, and module-level constant has a complete docstring, and coverage must be ≥ 80%.
+**CI on GitHub runs the same commands.** If CI fails on a PR — tests, typecheck, docstring lint, design-system lint, or voice lint — the PR cannot be merged. The full rules are in three project standards; the TL;DR for each:
 
-When an AI agent (Mavis, Claude Code, Copilot, Cursor) writes a function, it writes the docstring in the same commit. The docstring is the **contract**; the code is the **implementation**. They ship together.
+- **[DOCSTRING_STANDARD.md](../../DOCSTRING_STANDARD.md)** — every public function/class/method/type has a complete docstring (summary + Args/Returns/Raises + Example). Python coverage ≥ 80% via `interrogate`. TypeScript: `eslint jsdoc/*` is `error`.
+- **[DESIGN_SYSTEM.md](../../DESIGN_SYSTEM.md)** — every UI value comes from a token. No hex literals in component code, no off-scale spacing, no non-Phosphor icons, no decorative gradients/glassmorphism/blurs. Linted via stylelint + grep + axe-core.
+- **[VOICE_GUIDE.md](../../VOICE_GUIDE.md)** — every user-facing string follows the voice rules. Banned phrases (~80), em-dash ban in body copy, no "Oops!" in errors, no emoji in UI, buttons ≤ 3 words. Linted via Vale + custom ESLint rule.
+
+When an AI agent (Mavis, Claude Code, Copilot, Cursor) writes code or copy, it follows all three standards in the same change. The docstring is the **contract**; the code is the **implementation**; the design tokens and the voice are the **user-facing surface**. They ship together.
 
 ---
 
