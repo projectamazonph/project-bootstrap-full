@@ -144,6 +144,62 @@ Before scaffolding, perform a comprehensive codebase assessment:
 
 ---
 
+### Phase 2.7: Docstring Standard Lock-in
+
+**Every project this skill scaffolds must ship with a docstring/JSDoc standard on day one.** This is non-negotiable — it is the single highest-leverage documentation investment and the primary contract that lets AI coding agents work safely in the codebase.
+
+During this phase, before writing any code:
+
+1. **Drop `references/DOCSTRING_STANDARD.md.tpl` → `DOCSTRING_STANDARD.md`** at the project root. Fill in language(s) and team choices. Do not skip the file.
+2. **Detect the language stack** from the user's answers in Phase 1:
+   - **Python** → enable Google style, `pydocstyle` + `ruff D` + `interrogate --fail-under=80`, pre-commit hook, CI job.
+   - **TypeScript** → enable TSDoc, `eslint-plugin-jsdoc`, pre-commit hook, CI job.
+   - **Both** → enable both toolchains; the standard supports this.
+   - **Neither** → ask the user to pick a primary; the standard is the project's choice, not the scaffolder's.
+3. **Update `AGENTS.md` and `COMBINED_INSTRUCTIONS.md`** so the "Code Style" and "CI Requirements" sections reference `DOCSTRING_STANDARD.md` and require complete docstrings on every public symbol.
+4. **Update `OPERATING_GUIDELINES.md`** so the "Quality Gate" runs the docstring linter and the "Adding a Feature" recipe includes a docstring step.
+5. **Update `docs/CICD.md`** so the pipeline has a "Documentation Quality Stage" that blocks merges when `interrogate --fail-under=80` (Python) or `eslint jsdoc/*` (TypeScript) fails.
+6. **Brownfield projects:** if the existing codebase is below the docstring coverage threshold, the standard is still adopted, but a documented debt-reduction plan is added to `docs/SPRINTS.md` (e.g. "raise coverage from 45% to 80% over the next 3 sprints, file-by-file, no opportunistic blanket `noqa`").
+7. **AI-agent policy:** the standard must state explicitly that any AI coding agent (Mavis, Claude Code, Copilot, Cursor) writes the docstring at the same time it writes the function body, and that docstring deletion or shortening without an explicit reviewer instruction is a PR-blocking offense.
+
+The standard is **created from the template, not paraphrased**. This keeps the surface consistent across all projects bootstrapped from this skill.
+
+### Phase 2.8: Design System Lock-in
+
+**Every project this skill scaffolds must ship with a token-backed design system on day one.** Without one, every contributor (human or AI) invents values ad hoc and the product drifts toward the default AI aesthetic: blue gradients, glassmorphism, generic illustrations, system fonts, and emoji-laden buttons.
+
+During this phase, after the docstring standard is in place but before any UI is scaffolded:
+
+1. **Drop `references/DESIGN_SYSTEM.md.tpl` → `DESIGN_SYSTEM.md`** at the project root. Keep the anchor decisions (Phosphor / Space Grotesk + JetBrains Mono / off-white surface / orange accent) unless the user explicitly overrides them in writing.
+2. **Generate the `tokens/` directory** using [Style Dictionary](https://amzn.github.io/style-dictionary/). Wire the build to compile to CSS variables, Tailwind config, and any other target the project's stack needs.
+3. **Add the stylelint config** (`.stylelintrc.json`) at the project root. It must enforce: token-strict-value, banned properties (`backdrop-filter`, off-scale `box-shadow`, off-palette `color`), banned functions (`linear-gradient`, `radial-gradient`, `conic-gradient` in component code), and the icon-set import whitelist.
+4. **Add a `no-emoji-in-ui` rule** — the simplest enforcement is `eslint-plugin-jsx-a11y` plus a custom rule that rejects emoji code points in JSX. For Tailwind-only projects, the convention is: emoji in JSX is a `// eslint-disable-next-line` with a justification comment and team review.
+5. **Update `AGENTS.md` and `COMBINED_INSTRUCTIONS.md`** so the "Design System" section points to `DESIGN_SYSTEM.md` instead of the 4-line bullet, and the "Don't Do" list bans off-token values.
+6. **Update `OPERATING_GUIDELINES.md`** so the "Quality Gate" runs the stylelint + grep + icon-import checks.
+7. **Update `docs/CICD.md`** so the pipeline has a "Design System Stage" (3.6) that blocks merges on off-token violations.
+8. **Brownfield projects:** adopt the tokens, do not enable the linter on day one. Migrate the top 20% most-used components first, run the linter as `warn` for the first month, then `error` once token coverage crosses 70%. Track token coverage (`% of source files using only token values`) as a metric.
+9. **AI-agent policy:** the standard must state that any AI coding agent imports from `tokens/`, never invents a hex/spacing/font/icon value, and refuses prompts like "add a gradient for emphasis." The agent files an RFC for a new token instead of bypassing the rule.
+
+The standard is **created from the template, not paraphrased**. The tokens are the wire format between design intent and component code; off-token values are a bug.
+
+### Phase 2.9: Voice & Writing Standard Lock-in
+
+**Every project this skill scaffolds must ship with a lint-enforced voice guide on day one.** AI-generated copy is a recognizable tell — vague claims, hedge words, "leverage", "robust", "seamless", apologetic enthusiasm. None of that builds trust, and most of it actively erodes it.
+
+During this phase, after the design system is in place but before any copy is written:
+
+1. **Drop `references/VOICE_GUIDE.md.tpl` → `VOICE_GUIDE.md`** at the project root. Keep the audience anchor (Filipino VA users, direct, plain-spoken) unless the user explicitly overrides it in writing.
+2. **Install Vale** at the project root. Add `.vale.ini` pointing at `.vale/styles/amph/` and the vocab file `.vale/config/vocabularies/accept.txt` (which lists project-specific terms like "PayMongo", "GCash", "Maya").
+3. **Add the project's `amph/` Vale pack** (BannedPhrases, BannedPunctuation, HedgeWords) at `.vale/styles/amph/`. The list is seeded from §2.1 of the standard; the team can extend it via RFC.
+4. **Add the custom ESLint rule** (`eslint-plugin-no-ai-slop`) and its `banned-phrases.json` list. Wire it into `.eslintrc.cjs` as `error` over `src/**/*.{ts,tsx}`.
+5. **Update `AGENTS.md` and `COMBINED_INSTRUCTIONS.md`** so the "Voice" section points to `VOICE_GUIDE.md` instead of the 4-line bullet, and the "Don't Do" list bans the same phrases the linter bans.
+6. **Update `OPERATING_GUIDELINES.md`** so the "Quality Gate" runs Vale + the ESLint rule.
+7. **Update `docs/CICD.md`** so the pipeline has a "Voice / Writing Lint Stage" (3.7) that blocks merges on banned-phrase hits.
+8. **Brownfield projects:** adopt the standard, run Vale in `suggestion` level for the first month (it still reports issues but doesn't block CI). Clean the top 20% most-visible surfaces first (landing page hero, top 5 empty states, top 10 error messages). Track a "slop score" — Vale errors per 1000 words — and aim to halve it per quarter.
+9. **AI-agent policy:** the standard must state that any AI coding agent reads `VOICE_GUIDE.md` before writing the first string (not "be aware of it" — read it), produces lint-clean copy on the first try, and never paraphrases a banned phrase to dodge the linter. The agent flags suspected false positives with a justification comment, not a silent bypass.
+
+The voice is a **product surface**, not a style preference. Vale and ESLint are the type system for English. Drift is a bug.
+
 ### Phase 3: Scaffold & Documentation
 
 Create comprehensive project structure based on project type:
@@ -170,6 +226,9 @@ Create ALL new files from scratch:
 - `SESSION-LOG.md` - **Session log** with detailed work history, decisions made, and progress tracking
 - `SPRINTS.md` - **Sprint planning** with backlog, velocity tracking, and milestone planning
 - `COMBINED_INSTRUCTIONS.md` - **Essential instructions** combined from AGENTS.md and CLAUDE.md
+- `DOCSTRING_STANDARD.md` - **Docstring/JSDoc standard** (from `references/DOCSTRING_STANDARD.md.tpl`). Mandatory for every project this skill scaffolds. Defines style, linting toolchain, coverage threshold, and the AI-agent policy that docstrings ship with the function body in the same commit.
+- `DESIGN_SYSTEM.md` - **Design system standard** (from `references/DESIGN_SYSTEM.md.tpl`). Mandatory for every project this skill scaffolds. Defines the token set (color, type, spacing, radius, shadow, motion, density, z-index), the AI-slop visual ban list (decorative gradients, glassmorphism, off-token values, non-Phosphor icons, emoji in UI), and the linting + CI enforcement.
+- `VOICE_GUIDE.md` - **Voice / writing standard** (from `references/VOICE_GUIDE.md.tpl`). Mandatory for every project this skill scaffolds. Defines the banned AI-slop phrase list (~80 entries), punctuation rules (em-dash ban in body copy), sentence-level rules (length, active voice, hedge words, adjective budget), microcopy rules (buttons ≤ 3 words, error messages, empty states), and the Vale + ESLint enforcement.
 
 #### Project Structure
 Create complete directory structure from scratch (see Phase 4)
@@ -204,6 +263,9 @@ Create complete directory structure from scratch (see Phase 4)
 | `SESSION-LOG.md` | Create as new session record |
 | `SPRINTS.md` | Create based on current development state |
 | `COMBINED_INSTRUCTIONS.md` | Create from existing AGENTS.md + CLAUDE.md |
+| `DOCSTRING_STANDARD.md` | Adopt from `references/DOCSTRING_STANDARD.md.tpl`; if existing coverage is below the threshold, add a debt-reduction plan to `docs/SPRINTS.md` (raise coverage over multiple sprints, no blanket `noqa`). |
+| `DESIGN_SYSTEM.md` | Adopt from `references/DESIGN_SYSTEM.md.tpl`; build the `tokens/` directory; migrate the top 20% most-used components to token values first; run the stylelint as `warn` for the first month, then `error` once token coverage crosses 70%. |
+| `VOICE_GUIDE.md` | Adopt from `references/VOICE_GUIDE.md.tpl`; run Vale in `suggestion` level for the first month (still reports, doesn't block); clean the top 20% most-visible surfaces first (hero, top 5 empty states, top 10 error messages). |
 
 #### Documentation Integration Rules
 1. **Don't break existing workflows**: Preserve what works
@@ -402,6 +464,13 @@ Run validation checks:
 - Build system verification
 - SOLID architecture compliance
 - TDD protocol setup
+- **Docstring standard present** — `DOCSTRING_STANDARD.md` exists at the project root and is referenced from `AGENTS.md`, `COMBINED_INSTRUCTIONS.md`, `OPERATING_GUIDELINES.md`, and `docs/CICD.md`. Missing = validation fail.
+- **Docstring lint wired into CI** — `docs/CICD.md` has a Documentation Quality Stage that runs the docstring linter (`pydocstyle` / `interrogate` / `eslint jsdoc/*`) and gates merges. Missing = validation fail.
+- **Docstring coverage threshold** — for Python projects, `interrogate --fail-under=80` is configured in CI; for TypeScript projects, `eslint jsdoc/require-jsdoc` is set to `error`. Either must be present and active.
+- **Design system standard present** — `DESIGN_SYSTEM.md` exists at the project root and is referenced from `AGENTS.md`, `COMBINED_INSTRUCTIONS.md`, `OPERATING_GUIDELINES.md`, and `docs/CICD.md`. A `tokens/` directory exists with at least the color, typography, and spacing token groups. Missing = validation fail.
+- **Design system lint wired into CI** — `docs/CICD.md` has a Design System Stage (3.6) that runs stylelint + the hex/gradient/icon-import grep checks and gates merges. Missing = validation fail.
+- **Voice / writing standard present** — `VOICE_GUIDE.md` exists at the project root and is referenced from `AGENTS.md`, `COMBINED_INSTRUCTIONS.md`, `OPERATING_GUIDELINES.md`, and `docs/CICD.md`. A `.vale.ini` exists with the `amph/` style pack. Missing = validation fail.
+- **Voice / writing lint wired into CI** — `docs/CICD.md` has a Voice / Writing Lint Stage (3.7) that runs Vale + the `no-ai-slop/no-ai-slop` ESLint rule and gates merges. Missing = validation fail.
 
 Provide handoff with:
 - Next steps for implementation
@@ -430,5 +499,8 @@ This skill delivers:
 6. Validation report
 7. Implementation roadmap
 8. Session handover documentation
+9. **Docstring/JSDoc standard** — `DOCSTRING_STANDARD.md` at the project root, wired into `AGENTS.md`, `COMBINED_INSTRUCTIONS.md`, `OPERATING_GUIDELINES.md`, and the CI pipeline. AI coding agents are explicitly bound to write the docstring in the same change as the function body. Coverage threshold: 80% (Python) or 100% of public surface (TypeScript). A project scaffolded from this skill without this file is considered incomplete.
+10. **Design system standard** — `DESIGN_SYSTEM.md` at the project root, with a `tokens/` directory compiled via Style Dictionary. Wired into `AGENTS.md`, `COMBINED_INSTRUCTIONS.md`, `OPERATING_GUIDELINES.md`, and the CI pipeline (Design System Stage 3.6). The stylelint config + the hex/gradient/icon-import grep checks block merges on off-token violations. AI coding agents are explicitly bound to import from `tokens/`, never invent hex/spacing/font/icon values.
+11. **Voice / writing standard** — `VOICE_GUIDE.md` at the project root, with a `.vale.ini` and the `amph/` style pack. Wired into `AGENTS.md`, `COMBINED_INSTRUCTIONS.md`, `OPERATING_GUIDELINES.md`, and the CI pipeline (Voice / Writing Lint Stage 3.7). Vale + the `no-ai-slop/no-ai-slop` ESLint rule block merges on banned-phrase hits in docs and JSX strings. AI coding agents are explicitly bound to read the guide and produce lint-clean copy on the first try.
 
-Never create documentation without understanding the project first. Never skip intelligent questions. Never assume requirements.
+Never create documentation without understanding the project first. Never skip intelligent questions. Never assume requirements. **Never scaffold a project without `DOCSTRING_STANDARD.md`, `DESIGN_SYSTEM.md`, `VOICE_GUIDE.md`, and their matching CI gates.**

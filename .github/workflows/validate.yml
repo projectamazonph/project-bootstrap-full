@@ -27,13 +27,63 @@ jobs:
         done
         
         # Check if documentation templates exist
-        templates=("BOOTSTRAP.md.tpl" "SESSION-LOG.md.tpl" "SPRINTS.md.tpl" "README.md.tpl" "MVP.md.tpl")
+        templates=("BOOTSTRAP.md.tpl" "SESSION-LOG.md.tpl" "SPRINTS.md.tpl" "README.md.tpl" "MVP.md.tpl" "DOCSTRING_STANDARD.md.tpl" "DESIGN_SYSTEM.md.tpl" "VOICE_GUIDE.md.tpl")
         for template in "${templates[@]}"; do
           if [ ! -f "references/$template" ]; then
             echo "ERROR: Missing template file: references/$template"
             exit 1
           fi
         done
+
+        # Sanity-check the docstring standard mentions both required style conventions
+        if ! grep -qi "google" references/DOCSTRING_STANDARD.md.tpl; then
+          echo "ERROR: DOCSTRING_STANDARD.md.tpl must mention Google-style docstrings (Python)"
+          exit 1
+        fi
+        if ! grep -qi "tsdoc\|jsdoc" references/DOCSTRING_STANDARD.md.tpl; then
+          echo "ERROR: DOCSTRING_STANDARD.md.tpl must mention TSDoc/JSDoc (TypeScript)"
+          exit 1
+        fi
+        if ! grep -qi "fail-under\|coverage" references/DOCSTRING_STANDARD.md.tpl; then
+          echo "ERROR: DOCSTRING_STANDARD.md.tpl must define a coverage threshold (e.g. interrogate --fail-under=80)"
+          exit 1
+        fi
+
+        # Sanity-check the design system standard covers tokens and bans the obvious AI-slop patterns
+        if ! grep -qi "token" references/DESIGN_SYSTEM.md.tpl; then
+          echo "ERROR: DESIGN_SYSTEM.md.tpl must define a token system"
+          exit 1
+        fi
+        if ! grep -qi "phosphor" references/DESIGN_SYSTEM.md.tpl; then
+          echo "ERROR: DESIGN_SYSTEM.md.tpl must lock in the Phosphor icon set"
+          exit 1
+        fi
+        if ! grep -qi "backdrop-filter\|glassmorphism" references/DESIGN_SYSTEM.md.tpl; then
+          echo "ERROR: DESIGN_SYSTEM.md.tpl must ban glassmorphism / backdrop-filter"
+          exit 1
+        fi
+        if ! grep -qi "linear-gradient\|gradient" references/DESIGN_SYSTEM.md.tpl; then
+          echo "ERROR: DESIGN_SYSTEM.md.tpl must ban decorative gradients"
+          exit 1
+        fi
+
+        # Sanity-check the voice guide has a banned-phrase list and the em-dash ban
+        if ! grep -qi "banned" references/VOICE_GUIDE.md.tpl; then
+          echo "ERROR: VOICE_GUIDE.md.tpl must define a banned-phrase list"
+          exit 1
+        fi
+        if ! grep -qi "vale" references/VOICE_GUIDE.md.tpl; then
+          echo "ERROR: VOICE_GUIDE.md.tpl must reference Vale enforcement"
+          exit 1
+        fi
+        if ! grep -qE "leverage|robust|seamless" references/VOICE_GUIDE.md.tpl; then
+          echo "ERROR: VOICE_GUIDE.md.tpl must include the canonical AI-slop phrases (leverage, robust, seamless)"
+          exit 1
+        fi
+        if ! grep -qE "—|em-dash|em dash" references/VOICE_GUIDE.md.tpl; then
+          echo "ERROR: VOICE_GUIDE.md.tpl must ban the em-dash in body copy"
+          exit 1
+        fi
         
         # Validate README.md length
         readme_lines=$(wc -l < README.md)
